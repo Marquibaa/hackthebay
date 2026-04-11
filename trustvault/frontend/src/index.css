@@ -1,0 +1,79 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 230 25% 7%;
+    --foreground: 210 40% 96%;
+
+    --card: 230 25% 10%;
+    --card-foreground: 210 40% 96%;
+
+    --popover: 230 25% 10%;
+    --popover-foreground: 210 40% 96%;
+
+    --primary: 160 100% 50%;
+    --primary-foreground: 230 25% 7%;
+
+    --secondary: 230 20% 16%;
+    --secondary-foreground: 210 40% 96%;
+
+    --muted: 230 20% 16%;
+    --muted-foreground: 215 20% 55%;
+
+    --accent: 270 80% 65%;
+    --accent-foreground: 210 40% 96%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 40% 96%;
+
+    --border: 230 20% 18%;
+    --input: 230 20% 18%;
+    --ring: 160 100% 50%;
+
+    --radius: 0.75rem;
+
+    --neon-glow: 160 100% 50%;
+    --neon-purple: 270 80% 65%;
+    --neon-blue: 217 91% 60%;
+
+    --sidebar-background: 230 25% 7%;
+    --sidebar-foreground: 210 40% 96%;
+    --sidebar-primary: 160 100% 50%;
+    --sidebar-primary-foreground: 230 25% 7%;
+    --sidebar-accent: 230 20% 16%;
+    --sidebar-accent-foreground: 210 40% 96%;
+    --sidebar-border: 230 20% 18%;
+    --sidebar-ring: 160 100% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .neon-glow {
+    box-shadow: 0 0 15px hsl(var(--neon-glow) / 0.3), 0 0 45px hsl(var(--neon-glow) / 0.1);
+  }
+  .neon-glow-sm {
+    box-shadow: 0 0 8px hsl(var(--neon-glow) / 0.2), 0 0 20px hsl(var(--neon-glow) / 0.05);
+  }
+  .neon-text {
+    text-shadow: 0 0 10px hsl(var(--neon-glow) / 0.5), 0 0 30px hsl(var(--neon-glow) / 0.2);
+  }
+  .neon-purple-glow {
+    box-shadow: 0 0 15px hsl(var(--neon-purple) / 0.3), 0 0 45px hsl(var(--neon-purple) / 0.1);
+  }
+  .glass {
+    background: hsl(var(--card) / 0.6);
+    backdrop-filter: blur(12px);
+    border: 1px solid hsl(var(--border) / 0.5);
+  }
+}
