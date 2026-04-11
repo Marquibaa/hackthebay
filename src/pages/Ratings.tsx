@@ -21,17 +21,26 @@ export default function Ratings() {
   const [selectedTx, setSelectedTx] = useState<string | null>(null);
   const [rating, setRating] = useState(0);
   const [review, setReview] = useState("");
+  const [sentiment, setSentiment] = useState<"smooth" | "issues" | null>(null);
   const [ratedIds, setRatedIds] = useState<Set<string>>(new Set(["TXN-004", "TXN-006"]));
 
   const completedTxs = transactions.filter((t) => t.status === "completed");
 
+  function openRating(txId: string) {
+    setSelectedTx(txId === selectedTx ? null : txId);
+    setRating(0);
+    setReview("");
+    setSentiment(null);
+  }
+
   const submitRating = (txId: string) => {
-    if (rating === 0) return toast.error("Please select a rating");
+    if (rating === 0) return toast.error("Please select a star rating.");
     setRatedIds((prev) => new Set([...prev, txId]));
     setSelectedTx(null);
     setRating(0);
     setReview("");
-    toast.success("Rating submitted!");
+    setSentiment(null);
+    toast.success("Rating submitted — thanks for your feedback!");
   };
 
   return (
@@ -67,9 +76,12 @@ export default function Ratings() {
                             <CheckCircle2 className="w-3 h-3 mr-1" /> Rated
                           </Badge>
                         ) : (
-                          <Button size="sm" variant={selectedTx === tx.id ? "secondary" : "default"}
-                            onClick={() => setSelectedTx(selectedTx === tx.id ? null : tx.id)}>
-                            Rate Now
+                          <Button
+                            size="sm"
+                            variant={selectedTx === tx.id ? "secondary" : "default"}
+                            onClick={() => openRating(tx.id)}
+                          >
+                            {selectedTx === tx.id ? "Cancel" : "Rate Now"}
                           </Button>
                         )}
                       </div>
@@ -80,11 +92,40 @@ export default function Ratings() {
                             <p className="text-sm font-medium text-foreground mb-2">How was your experience?</p>
                             <StarRating value={rating} onChange={setRating} />
                           </div>
-                          <div className="flex gap-3">
-                            <Button size="sm" variant="outline" className="gap-1"><ThumbsUp className="w-3 h-3" /> Smooth</Button>
-                            <Button size="sm" variant="outline" className="gap-1"><ThumbsDown className="w-3 h-3" /> Issues</Button>
+
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-2">Quick tag (optional)</p>
+                            <div className="flex gap-3">
+                              <Button
+                                size="sm"
+                                variant={sentiment === "smooth" ? "default" : "outline"}
+                                className={sentiment === "smooth" ? "bg-success text-success-foreground hover:bg-success/90" : ""}
+                                onClick={() => {
+                                  setSentiment(sentiment === "smooth" ? null : "smooth");
+                                  if (sentiment !== "smooth" && rating === 0) setRating(5);
+                                }}
+                              >
+                                <ThumbsUp className="w-3 h-3 mr-1" /> Smooth
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant={sentiment === "issues" ? "default" : "outline"}
+                                className={sentiment === "issues" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
+                                onClick={() => {
+                                  setSentiment(sentiment === "issues" ? null : "issues");
+                                  if (sentiment !== "issues" && rating === 0) setRating(2);
+                                }}
+                              >
+                                <ThumbsDown className="w-3 h-3 mr-1" /> Issues
+                              </Button>
+                            </div>
                           </div>
-                          <Textarea placeholder="Write a review (optional)..." value={review} onChange={(e) => setReview(e.target.value)} />
+
+                          <Textarea
+                            placeholder="Write a review (optional)..."
+                            value={review}
+                            onChange={(e) => setReview(e.target.value)}
+                          />
                           <Button size="sm" onClick={() => submitRating(tx.id)}>Submit Rating</Button>
                         </div>
                       )}

@@ -4,8 +4,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Globe, ArrowRight, ShieldCheck, Clock, RefreshCw } from "lucide-react";
+import { Globe, ArrowRight, ShieldCheck, Clock, RefreshCw, Loader2 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 const currencies = [
   { code: "USD", name: "US Dollar", symbol: "$", flag: "🇺🇸" },
@@ -33,9 +35,27 @@ const International = () => {
   const [fromCurrency, setFromCurrency] = useState("USD");
   const [toCurrency, setToCurrency] = useState("EUR");
   const [amount, setAmount] = useState("1000");
+  const [sending, setSending] = useState(false);
+  const navigate = useNavigate();
 
   const rate = 0.92; // Mock
   const converted = (parseFloat(amount || "0") * rate).toFixed(2);
+
+  async function handleSend() {
+    if (!amount || parseFloat(amount) <= 0) {
+      toast.error("Please enter a valid amount.");
+      return;
+    }
+    if (fromCurrency === toCurrency) {
+      toast.error("Please select different currencies.");
+      return;
+    }
+    setSending(true);
+    await new Promise((r) => setTimeout(r, 900));
+    setSending(false);
+    toast.success(`International transfer of ${amount} ${fromCurrency} → ${converted} ${toCurrency} queued in escrow.`);
+    navigate("/transactions");
+  }
 
   return (
     <div className="space-y-6">
@@ -94,7 +114,11 @@ const International = () => {
               <RefreshCw className="w-3 h-3" />
               1 {fromCurrency} = {rate} {toCurrency} · Updated just now
             </div>
-            <Button size="sm">Send International Transfer</Button>
+            <Button size="sm" disabled={sending} onClick={handleSend}>
+              {sending
+                ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Processing…</>
+                : "Send International Transfer"}
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -120,6 +144,19 @@ const International = () => {
                   <span className="flex items-center gap-1"><ShieldCheck className="w-3 h-3 text-success" /> Escrow protected</span>
                   <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {c.time}</span>
                   <span>Fee: {c.fee}</span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 text-xs px-2"
+                    onClick={() => {
+                      setFromCurrency(c.from);
+                      setToCurrency(c.to);
+                      toast.info(`Corridor set to ${c.from} → ${c.to}`);
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
+                  >
+                    Use
+                  </Button>
                 </div>
               </div>
             ))}

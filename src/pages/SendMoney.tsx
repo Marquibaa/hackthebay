@@ -17,6 +17,18 @@ const EXCHANGE_RATES: Record<string, number> = {
   USD: 1, EUR: 1.08, GBP: 1.27, JPY: 0.0067, NGN: 0.00065,
 };
 
+// Extended escrow periods — includes real-estate range
+const ESCROW_OPTIONS = [
+  { value: "3",   label: "3 Days",    hint: "Quick transactions" },
+  { value: "7",   label: "7 Days",    hint: "Standard" },
+  { value: "14",  label: "14 Days",   hint: "Extended review" },
+  { value: "30",  label: "30 Days",   hint: "Monthly" },
+  { value: "60",  label: "60 Days",   hint: "Two months" },
+  { value: "90",  label: "90 Days",   hint: "Quarterly" },
+  { value: "180", label: "180 Days",  hint: "Six months" },
+  { value: "365", label: "1 Year",    hint: "Real estate / long-term" },
+];
+
 export default function SendMoney() {
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
@@ -30,9 +42,14 @@ export default function SendMoney() {
 
   const amountUSD = parseFloat(form.amount || "0") * (EXCHANGE_RATES[form.currency] ?? 1);
 
+  // Step 0 valid: both name and email filled
+  const step0Valid = form.recipient.trim().length > 0 && form.email.trim().length > 0;
+  // Step 1 valid: amount > 0
+  const step1Valid = parseFloat(form.amount || "0") > 0;
+
   async function handleSend() {
     setSubmitting(true);
-    const escrowSeconds = parseInt(form.escrowDays) * 86400;
+    const escrowDaysInt = parseInt(form.escrowDays);
 
     let escrowId: string | undefined;
     try {
@@ -46,7 +63,6 @@ export default function SendMoney() {
       });
       escrowId = `ESC-${Date.now()}`;
     } catch {
-      // Flask not running — continue in demo mode
       escrowId = `ESC-${Date.now()}`;
     }
 
@@ -62,7 +78,7 @@ export default function SendMoney() {
       date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
       country: "—",
       fraudScore: 0,
-      escrowDays: parseInt(form.escrowDays),
+      escrowDays: escrowDaysInt,
       description: form.description,
       escrowId,
     };
@@ -72,6 +88,8 @@ export default function SendMoney() {
     toast.success(`$${amountUSD.toFixed(2)} sent to escrow for ${form.recipient}`);
     navigate("/transactions");
   }
+
+  const selectedEscrow = ESCROW_OPTIONS.find((o) => o.value === form.escrowDays);
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -139,18 +157,27 @@ export default function SendMoney() {
                     </Select>
                   </div>
                 </div>
+
                 <div className="space-y-2">
                   <Label>Escrow Hold Period</Label>
                   <Select value={form.escrowDays} onValueChange={(v) => update("escrowDays", v)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="3">3 Days</SelectItem>
-                      <SelectItem value="7">7 Days</SelectItem>
-                      <SelectItem value="14">14 Days</SelectItem>
-                      <SelectItem value="30">30 Days</SelectItem>
+                      {ESCROW_OPTIONS.map((o) => (
+                        <SelectItem key={o.value} value={o.value}>
+                          {o.label} <span className="text-muted-foreground text-xs ml-1">— {o.hint}</span>
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
+                  {selectedEscrow && (
+                    <p className="text-xs text-muted-foreground">
+                      Funds will be held until recipient confirms, up to <strong>{selectedEscrow.label}</strong>.
+                      {parseInt(form.escrowDays) >= 180 && " Suitable for real estate and long-term contracts."}
+                    </p>
+                  )}
                 </div>
+
                 <div className="space-y-2">
                   <Label>Description (optional)</Label>
                   <Textarea placeholder="What's this payment for?" value={form.description} onChange={(e) => update("description", e.target.value)} />
@@ -176,7 +203,7 @@ export default function SendMoney() {
                   ["Recipient", form.recipient || "—"],
                   ["Email", form.email || "—"],
                   ["Amount", `${form.currency} ${form.amount || "0.00"} (≈ $${amountUSD.toFixed(2)} USD)`],
-                  ["Escrow Period", `${form.escrowDays} Days`],
+                  ["Escrow Period", `${selectedEscrow?.label ?? form.escrowDays + " Days"}`],
                   ...(form.description ? [["Note", form.description]] : []),
                 ].map(([label, value]) => (
                   <div key={label} className="flex justify-between text-sm">
@@ -199,7 +226,12 @@ export default function SendMoney() {
           <div className="flex justify-between pt-2">
             <Button variant="outline" disabled={step === 0 || submitting} onClick={() => setStep(step - 1)}>Back</Button>
             {step < 2 ? (
-              <Button onClick={() => setStep(step + 1)} disabled={step === 0 && !form.recipient}>Continue</Button>
+              <Button
+                onClick={() => setStep(step + 1)}
+                disabled={(step === 0 && !step0Valid) || (step === 1 && !step1Valid)}
+              >
+                Continue
+              </Button>
             ) : (
               <Button disabled={submitting} onClick={handleSend} className="bg-success hover:bg-success/90 text-success-foreground">
                 {submitting ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Sending…</> : <><Lock className="w-4 h-4 mr-1" /> Send to Escrow</>}
