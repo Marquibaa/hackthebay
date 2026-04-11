@@ -1,8 +1,7 @@
 import { lookupUser } from "@/lib/store";
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY as string;
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
-
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 export interface FraudFactor {
   label: string;
   impact: "positive" | "negative" | "neutral";
@@ -55,7 +54,8 @@ Return a JSON object with exactly this shape:
 Guidelines:
 - riskScore 0-30 = low, 31-65 = medium, 66-100 = high
 - Include 4-6 factors covering: rating, trade history, disputes, escrow amount, account age
-- Be objective and concise`;
+- Be objective and concise
+- Keep each factor "note" to 8 words or fewer`;
 }
 
 export async function assessFraudRisk(
@@ -75,12 +75,12 @@ export async function assessFraudRisk(
   const disputeCount = user?.disputeCount ?? 0;
   const accountAgeDays = user?.accountAgeDays ?? 30;
 
-  const response = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
+  const response = await fetch(GEMINI_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       contents: [{ parts: [{ text: buildPrompt(nameOrEmail, amountUSD, rating, totalTrades, disputeCount, accountAgeDays) }] }],
-      generationConfig: { temperature: 0.2, maxOutputTokens: 1024 },
+      generationConfig: { temperature: 0.2, maxOutputTokens: 8192, responseMimeType: "application/json" },
     }),
   });
 
