@@ -1,14 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { ShieldCheck, AlertTriangle, ShieldAlert, Eye, Activity, Brain, TrendingDown } from "lucide-react";
-
-const alerts = [
-  { id: 1, title: "Unusual transfer pattern detected", description: "TXN-005 to Erik Müller — $3,200 sent to a new recipient in a high-risk region.", severity: "high", time: "2 hours ago" },
-  { id: 2, title: "Potential account takeover attempt", description: "Multiple failed login attempts from unrecognized IP (185.xx.xx.xx).", severity: "critical", time: "5 hours ago" },
-  { id: 3, title: "Velocity check triggered", description: "3 transactions initiated within 10 minutes — exceeds normal behavior.", severity: "medium", time: "1 day ago" },
-  { id: 4, title: "Recipient mismatch flagged", description: "TXN-008 — recipient name doesn't match account holder.", severity: "medium", time: "2 days ago" },
-];
+import { ShieldCheck, AlertTriangle, ShieldAlert, Eye, Brain } from "lucide-react";
+import FraudChecker from "@/components/FraudChecker";
+import { transactions } from "@/lib/store";
 
 const severityStyles: Record<string, { badge: string; icon: typeof ShieldCheck }> = {
   critical: { badge: "bg-destructive/10 text-destructive", icon: ShieldAlert },
@@ -17,14 +12,29 @@ const severityStyles: Record<string, { badge: string; icon: typeof ShieldCheck }
   low: { badge: "bg-success/10 text-success", icon: ShieldCheck },
 };
 
-const metrics = [
-  { label: "Transactions Scanned", value: "1,284", icon: Activity },
-  { label: "Threats Blocked", value: "7", icon: ShieldAlert },
-  { label: "AI Model Accuracy", value: "99.2%", icon: Brain },
-  { label: "False Positive Rate", value: "0.3%", icon: TrendingDown },
-];
+// Derive alerts from flagged/disputed transactions in the store
+function getAlerts() {
+  return transactions
+    .filter((t) => t.status === "flagged" || t.status === "disputed" || t.fraudScore > 40)
+    .map((t) => ({
+      id: t.id,
+      title: t.fraudScore > 65
+        ? "High fraud risk detected"
+        : t.status === "disputed"
+        ? "Transaction disputed"
+        : "Elevated risk flagged",
+      description: `${t.id} with ${t.party} — ${t.amount} · Fraud score: ${t.fraudScore}/100`,
+      severity: t.fraudScore > 65 ? "high" : "medium",
+      time: t.date,
+    }));
+}
 
 const FraudDetection = () => {
+  const alerts = getAlerts();
+  const flaggedCount = transactions.filter((t) => t.status === "flagged" || t.status === "disputed").length;
+  const totalScanned = transactions.length;
+  const avgScore = Math.round(transactions.reduce((a, t) => a + t.fraudScore, 0) / totalScanned);
+
   return (
     <div className="space-y-6">
       <div>
@@ -32,28 +42,20 @@ const FraudDetection = () => {
         <p className="text-sm text-muted-foreground">Real-time AI monitoring protects every transaction on VaultPay.</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {metrics.map((m) => (
-          <Card key={m.label}>
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-muted-foreground">{m.label}</span>
-                <m.icon className="w-4 h-4 text-primary" />
-              </div>
-              <p className="text-2xl font-bold text-foreground">{m.value}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {/* Live Gemini AI Checker */}
+      <FraudChecker />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="text-lg">Fraud Alerts</CardTitle>
-            <CardDescription>Active alerts detected by our AI engine.</CardDescription>
+            <CardDescription>Transactions with elevated risk scores from your history.</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
             <div className="divide-y divide-border">
+              {alerts.length === 0 && (
+                <p className="px-6 py-8 text-center text-sm text-muted-foreground">No alerts — all transactions look clean.</p>
+              )}
               {alerts.map((alert) => {
                 const style = severityStyles[alert.severity];
                 return (
@@ -90,24 +92,24 @@ const FraudDetection = () => {
             <CardContent className="space-y-4">
               <div>
                 <div className="flex justify-between text-sm mb-1">
-                  <span className="text-muted-foreground">Overall Risk</span>
-                  <span className="font-medium text-warning">Low-Medium</span>
+                  <span className="text-muted-foreground">Transactions Scanned</span>
+                  <span className="font-medium text-foreground">{totalScanned}</span>
                 </div>
-                <Progress value={28} className="h-2" />
+                <Progress value={100} className="h-2" />
               </div>
               <div>
                 <div className="flex justify-between text-sm mb-1">
-                  <span className="text-muted-foreground">Network Trust</span>
-                  <span className="font-medium text-success">92%</span>
+                  <span className="text-muted-foreground">Flagged / Disputed</span>
+                  <span className="font-medium text-destructive">{flaggedCount}</span>
                 </div>
-                <Progress value={92} className="h-2" />
+                <Progress value={(flaggedCount / totalScanned) * 100} className="h-2" />
               </div>
               <div>
                 <div className="flex justify-between text-sm mb-1">
-                  <span className="text-muted-foreground">Identity Confidence</span>
-                  <span className="font-medium text-primary">88%</span>
+                  <span className="text-muted-foreground">Avg Fraud Score</span>
+                  <span className={`font-medium ${avgScore > 40 ? "text-warning" : "text-success"}`}>{avgScore}/100</span>
                 </div>
-                <Progress value={88} className="h-2" />
+                <Progress value={avgScore} className="h-2" />
               </div>
             </CardContent>
           </Card>
@@ -120,16 +122,16 @@ const FraudDetection = () => {
               </div>
               <div className="space-y-2 text-xs">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Last updated</span>
-                  <span className="text-foreground">2 minutes ago</span>
+                  <span className="text-muted-foreground">Provider</span>
+                  <span className="text-foreground">Google Gemini 1.5 Flash</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Model version</span>
-                  <span className="text-foreground">v3.8.1</span>
+                  <span className="text-muted-foreground">Lookup source</span>
+                  <span className="text-foreground">VaultPay user database</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Training data</span>
-                  <span className="text-foreground">12M+ transactions</span>
+                  <span className="text-muted-foreground">Mode</span>
+                  <span className="text-foreground">On-demand assessment</span>
                 </div>
               </div>
             </CardContent>

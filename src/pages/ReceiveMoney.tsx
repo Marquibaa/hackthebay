@@ -1,24 +1,40 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Copy, Download, CheckCircle2, Clock, ArrowDownLeft } from "lucide-react";
-import { useState } from "react";
+import { Copy, CheckCircle2, Clock, ArrowDownLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { transactions, updateTransactionStatus } from "@/lib/store";
+import { flaskApi } from "@/lib/api";
 
-const pendingPayments = [
-  { id: "RCV-001", sender: "Alice Johnson", amount: "$2,500.00", escrowExpires: "5 days", status: "awaiting_confirmation" },
-  { id: "RCV-002", sender: "Carlos Martinez", amount: "$4,800.00", escrowExpires: "12 days", status: "awaiting_confirmation" },
-  { id: "RCV-003", sender: "Erik Müller", amount: "$1,600.00", escrowExpires: "2 days", status: "ready_to_release" },
-];
-
-const ReceiveMoney = () => {
+export default function ReceiveMoney() {
   const [paymentLink] = useState("https://vaultpay.com/pay/jd-29x8k4m");
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [, forceUpdate] = useState(0);
+
+  const incomingEscrow = transactions.filter((t) => t.type === "received" && t.status === "in_escrow");
 
   const copyLink = () => {
     navigator.clipboard.writeText(paymentLink);
     toast.success("Payment link copied!");
   };
+
+  async function handleConfirm(txId: string, escrowId: string | undefined) {
+    setLoadingId(txId);
+    try {
+      if (escrowId) await flaskApi.releaseEscrow(escrowId);
+      updateTransactionStatus(txId, "completed");
+      forceUpdate((n) => n + 1);
+      toast.success("Receipt confirmed — funds released!");
+    } catch {
+      updateTransactionStatus(txId, "completed");
+      forceUpdate((n) => n + 1);
+      toast.success("Receipt confirmed (demo mode).");
+    } finally {
+      setLoadingId(null);
+    }
+  }
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -35,14 +51,7 @@ const ReceiveMoney = () => {
         <CardContent className="space-y-4">
           <div className="flex gap-2">
             <Input readOnly value={paymentLink} className="font-mono text-sm" />
-            <Button variant="outline" onClick={copyLink}>
-              <Copy className="w-4 h-4" />
-            </Button>
-          </div>
-          <div className="flex gap-3">
-            <Button variant="outline" size="sm">
-              <Download className="w-4 h-4 mr-1" /> Download QR Code
-            </Button>
+            <Button variant="outline" onClick={copyLink}><Copy className="w-4 h-4" /></Button>
           </div>
         </CardContent>
       </Card>
@@ -54,39 +63,39 @@ const ReceiveMoney = () => {
         </CardHeader>
         <CardContent className="p-0">
           <div className="divide-y divide-border">
-            {pendingPayments.map((p) => (
-              <div key={p.id} className="flex items-center justify-between px-6 py-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-success/10 flex items-center justify-center">
-                    <ArrowDownLeft className="w-4 h-4 text-success" />
+            {incomingEscrow.length === 0 && (
+              <p className="px-6 py-8 text-center text-sm text-muted-foreground">No incoming escrow payments right now.</p>
+            )}
+            {incomingEscrow.map((p) => {
+              const isLoading = loadingId === p.id;
+              return (
+                <div key={p.id} className="flex items-center justify-between px-6 py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-success/10 flex items-center justify-center">
+                      <ArrowDownLeft className="w-4 h-4 text-success" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{p.party}</p>
+                      <p className="text-xs text-muted-foreground">{p.id} · Escrow {p.escrowDays}d hold</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{p.sender}</p>
-                    <p className="text-xs text-muted-foreground">{p.id} · Expires in {p.escrowExpires}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  {p.status === "ready_to_release" ? (
-                    <Badge className="bg-success/10 text-success">
-                      <CheckCircle2 className="w-3 h-3 mr-1" /> Ready
-                    </Badge>
-                  ) : (
+                  <div className="flex items-center gap-3">
                     <Badge variant="secondary" className="bg-warning/10 text-warning">
                       <Clock className="w-3 h-3 mr-1" /> Awaiting
                     </Badge>
-                  )}
-                  <span className="text-sm font-semibold text-success">+{p.amount}</span>
-                  {p.status === "ready_to_release" && (
-                    <Button size="sm">Release</Button>
-                  )}
+                    <span className="text-sm font-semibold text-success">+{p.amount}</span>
+                    <Button size="sm" disabled={isLoading} onClick={() => handleConfirm(p.id, p.escrowId)}>
+                      {isLoading
+                        ? <Loader2 className="w-3 h-3 animate-spin" />
+                        : <><CheckCircle2 className="w-3 h-3 mr-1" /> Confirm</>}
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </CardContent>
       </Card>
     </div>
   );
-};
-
-export default ReceiveMoney;
+}
