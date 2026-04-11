@@ -11,7 +11,7 @@ const StarRating = ({ value, onChange }: { value: number; onChange: (v: number) 
   <div className="flex gap-1">
     {[1, 2, 3, 4, 5].map((i) => (
       <button key={i} onClick={() => onChange(i)} className="p-0.5">
-        <Star className={`w-6 h-6 transition-colors ${i <= value ? "fill-warning text-warning" : "text-muted-foreground/30"}`} />
+        <Star className={`w-6 h-6 transition-colors ${i <= value ? "fill-black text-black" : "text-muted-foreground/30"}`} />
       </button>
     ))}
   </div>
@@ -23,7 +23,6 @@ export default function Ratings() {
   const [review, setReview] = useState("");
   const [ratedIds, setRatedIds] = useState<Set<string>>(new Set(["TXN-004", "TXN-006"]));
 
-  // Only show completed transactions that can be rated
   const completedTxs = transactions.filter((t) => t.status === "completed");
 
   const submitRating = (txId: string) => {
@@ -116,7 +115,7 @@ export default function Ratings() {
                     <div className="flex items-center gap-2">
                       <div className="flex">
                         {[1, 2, 3, 4, 5].map((s) => (
-                          <Star key={s} className={`w-3 h-3 ${s <= Math.round(user.rating) ? "fill-warning text-warning" : "text-muted-foreground/30"}`} />
+                          <Star key={s} className={`w-3 h-3 ${s <= Math.round(user.rating) ? "fill-black text-black" : "text-muted-foreground/30"}`} />
                         ))}
                       </div>
                       <span className="text-xs text-muted-foreground">{user.rating} · {user.totalTrades} txns</span>
