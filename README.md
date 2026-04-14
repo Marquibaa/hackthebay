@@ -63,10 +63,5 @@ VaultPay is a step toward:
 
 ---
 
-## 👨‍💻 Contributors
-Built during a hackathon by a team passionate about fintech, blockchain, and solving real-world problems.
-
----
-
 ## 📎 Want to Learn More?
 Feel free to explore the code, open issues, or contribute!
